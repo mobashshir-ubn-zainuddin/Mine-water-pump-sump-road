@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-background text-text font-sans;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-surface;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded hover:bg-accent/50;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+  }
+}
+
+@keyframes danger-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-danger-pulse {
+  animation: danger-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Utility classes */
+.card {
+  @apply bg-surface border border-border rounded-lg p-4;
+}
+
+.card-interactive {
+  @apply card transition-all hover:border-accent/50 cursor-pointer;
+}
+
+.btn-primary {
+  @apply px-4 py-2 bg-accent text-background font-semibold rounded-lg hover:bg-accentLight transition-colors;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 bg-surface border border-border text-text font-semibold rounded-lg hover:border-accent/50 transition-colors;
+}
+
+.btn-danger {
+  @apply px-4 py-2 bg-danger text-white font-semibold rounded-lg hover:bg-red-600 transition-colors;
+}
+
+.status-safe {
+  @apply text-success;
+}
+
+.status-warning {
+  @apply text-warning;
+}
+
+.status-critical {
+  @apply text-danger;
+}
+
+.badge-safe {
+  @apply inline-block px-3 py-1 bg-success/20 text-success rounded-full text-sm font-semibold;
+}
+
+.badge-warning {
+  @apply inline-block px-3 py-1 bg-warning/20 text-warning rounded-full text-sm font-semibold;
+}
+
+.badge-critical {
+  @apply inline-block px-3 py-1 bg-danger/20 text-danger rounded-full text-sm font-semibold;
+}
