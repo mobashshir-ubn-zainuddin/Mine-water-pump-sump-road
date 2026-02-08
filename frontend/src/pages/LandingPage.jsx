@@ -336,8 +336,11 @@ function LandingPage() {
           </h3>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Feature 1 */}
-            <div className="card">
+            {/* Feature 1 - Flood Prediction -> Overview */}
+            <div 
+              onClick={() => navigate('/dashboard?tab=overview')}
+              className="card cursor-pointer hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all"
+            >
               <div className="w-12 h-12 bg-accent/20 rounded-lg flex items-center justify-center mb-4">
                 <Droplet className="w-6 h-6 text-accent" />
               </div>
@@ -350,8 +353,11 @@ function LandingPage() {
               </p>
             </div>
 
-            {/* Feature 2 */}
-            <div className="card">
+            {/* Feature 2 - Pump Health -> Pumps */}
+            <div 
+              onClick={() => navigate('/dashboard?tab=pumps')}
+              className="card cursor-pointer hover:border-warning/50 hover:shadow-lg hover:shadow-warning/10 transition-all"
+            >
               <div className="w-12 h-12 bg-warning/20 rounded-lg flex items-center justify-center mb-4">
                 <TrendingUp className="w-6 h-6 text-warning" />
               </div>
@@ -364,8 +370,11 @@ function LandingPage() {
               </p>
             </div>
 
-            {/* Feature 3 */}
-            <div className="card">
+            {/* Feature 3 - Weather Alerts -> Overview */}
+            <div 
+              onClick={() => navigate('/dashboard?tab=overview')}
+              className="card cursor-pointer hover:border-success/50 hover:shadow-lg hover:shadow-success/10 transition-all"
+            >
               <div className="w-12 h-12 bg-success/20 rounded-lg flex items-center justify-center mb-4">
                 <AlertCircle className="w-6 h-6 text-success" />
               </div>
@@ -378,8 +387,11 @@ function LandingPage() {
               </p>
             </div>
 
-            {/* Feature 4 */}
-            <div className="card">
+            {/* Feature 4 - Road Monitoring -> Roads */}
+            <div 
+              onClick={() => navigate('/dashboard?tab=roads')}
+              className="card cursor-pointer hover:border-danger/50 hover:shadow-lg hover:shadow-danger/10 transition-all"
+            >
               <div className="w-12 h-12 bg-danger/20 rounded-lg flex items-center justify-center mb-4">
                 <MapPin className="w-6 h-6 text-danger" />
               </div>
@@ -392,8 +404,11 @@ function LandingPage() {
               </p>
             </div>
 
-            {/* Feature 5 */}
-            <div className="card">
+            {/* Feature 5 - Real-Time Dashboard -> Overview */}
+            <div 
+              onClick={() => navigate('/dashboard?tab=overview')}
+              className="card cursor-pointer hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all"
+            >
               <div className="w-12 h-12 bg-accent/20 rounded-lg flex items-center justify-center mb-4">
                 <Zap className="w-6 h-6 text-accent" />
               </div>
@@ -406,8 +421,11 @@ function LandingPage() {
               </p>
             </div>
 
-            {/* Feature 6 */}
-            <div className="card">
+            {/* Feature 6 - Early Warnings -> Overview */}
+            <div 
+              onClick={() => navigate('/dashboard?tab=overview')}
+              className="card cursor-pointer hover:border-warning/50 hover:shadow-lg hover:shadow-warning/10 transition-all"
+            >
               <div className="w-12 h-12 bg-warning/20 rounded-lg flex items-center justify-center mb-4">
                 <AlertCircle className="w-6 h-6 text-warning" />
               </div>

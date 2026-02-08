@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuthStore } from '../stores/authStore';
 import apiClient from '../stores/authStore';
@@ -27,7 +28,9 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 
 function Dashboard() {
   const { user, locationPermission } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [sumps, setSumps] = useState([]);
   const [pumps, setPumps] = useState([]);
   const [roads, setRoads] = useState([]);
@@ -44,6 +47,14 @@ function Dashboard() {
   const [editingPump, setEditingPump] = useState(null);
   const [dataFetchedAt, setDataFetchedAt] = useState(Date.now());
   const [tickCount, setTickCount] = useState(0);
+
+  // Update tab from URL when navigating from landing page
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && ['overview', 'pumps', 'roads'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
 
   // Fetch initial data
   useEffect(() => {
