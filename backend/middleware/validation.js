@@ -67,13 +67,30 @@ export const validateSumpCreation = [
 ];
 
 export const validateSumpUpdate = [
-  body('currentWaterHeight')
-    .isFloat({ min: 0 })
+  body('name')
     .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Name cannot be empty if provided'),
+  body('length')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Length must be >= 0'),
+  body('width')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Width must be >= 0'),
+  body('depth')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Depth must be >= 0'),
+  body('currentWaterHeight')
+    .optional()
+    .isFloat({ min: 0 })
     .withMessage('Current water height must be >= 0'),
   body('inflowRate')
-    .isFloat({ min: 0 })
     .optional()
+    .isFloat({ min: 0 })
     .withMessage('Inflow rate must be >= 0')
 ];
 

@@ -15,7 +15,9 @@ import {
   Eye,
   Loader,
   Activity,
-  Truck
+  Truck,
+  Edit,
+  X
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -36,6 +38,12 @@ function Dashboard() {
   const [showPumpForm, setShowPumpForm] = useState(false);
   const [showRoadForm, setShowRoadForm] = useState(false);
   const [alerts, setAlerts] = useState([]);
+  
+  // Edit state
+  const [editingSump, setEditingSump] = useState(null);
+  const [editingPump, setEditingPump] = useState(null);
+  const [dataFetchedAt, setDataFetchedAt] = useState(Date.now());
+  const [tickCount, setTickCount] = useState(0);
 
   // Fetch initial data
   useEffect(() => {
@@ -108,6 +116,20 @@ function Dashboard() {
     setAlerts(newAlerts);
   }, [sumps, pumps, roads]);
 
+  // Real-time countdown timer - updates every minute
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setTickCount(prev => prev + 1); // Force re-render every minute
+    }, 60000); // Update every 60 seconds (1 minute)
+    
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Calculate elapsed time in hours since data was fetched
+  const getElapsedHours = () => {
+    return (Date.now() - dataFetchedAt) / (1000 * 60 * 60);
+  };
+
   const fetchAllData = async () => {
     setIsLoading(true);
     setError('');
@@ -121,6 +143,7 @@ function Dashboard() {
       setSumps(sumpsRes.data.sumps || []);
       setPumps(pumpsRes.data.pumps || []);
       setRoads(roadsRes.data.roads || []);
+      setDataFetchedAt(Date.now()); // Track when data was fetched for countdown
 
       // Fetch weather if location permission is granted
       if (locationPermission) {
@@ -288,6 +311,142 @@ function Dashboard() {
     );
   };
 
+  // ============ EDIT SUMP MODAL ============
+  const EditSumpModal = () => {
+    const [formData, setFormData] = useState({
+      name: '',
+      length: '',
+      width: '',
+      depth: '',
+      currentWaterHeight: '',
+      inflowRate: ''
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Pre-fill form when editingSump changes
+    useEffect(() => {
+      if (editingSump) {
+        setFormData({
+          name: editingSump.name || '',
+          length: editingSump.length || '',
+          width: editingSump.width || '',
+          depth: editingSump.depth || '',
+          currentWaterHeight: editingSump.currentWaterHeight || '',
+          inflowRate: editingSump.inflowRate || ''
+        });
+      }
+    }, [editingSump]);
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+        await apiClient.put(`/api/sumps/${editingSump._id}`, {
+          ...formData,
+          length: parseFloat(formData.length),
+          width: parseFloat(formData.width),
+          depth: parseFloat(formData.depth),
+          currentWaterHeight: parseFloat(formData.currentWaterHeight),
+          inflowRate: parseFloat(formData.inflowRate)
+        });
+        setEditingSump(null);
+        fetchAllData(); // Refresh data & reset countdown timer
+      } catch (err) {
+        alert('Failed to update sump: ' + (err.response?.data?.error || err.message));
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    if (!editingSump) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-surface border border-border rounded-lg p-6 max-w-md w-full">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-text">Edit Sump</h3>
+            <button onClick={() => setEditingSump(null)} className="text-textSecondary hover:text-text">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="text"
+              placeholder="Sump Name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              className="w-full px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+            />
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Length (m)"
+                value={formData.length}
+                onChange={(e) => setFormData({ ...formData, length: e.target.value })}
+                required
+                className="px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+              />
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Width (m)"
+                value={formData.width}
+                onChange={(e) => setFormData({ ...formData, width: e.target.value })}
+                required
+                className="px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+              />
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Depth (m)"
+                value={formData.depth}
+                onChange={(e) => setFormData({ ...formData, depth: e.target.value })}
+                required
+                className="px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+              />
+            </div>
+            <input
+              type="number"
+              step="0.1"
+              placeholder="Water Height (m)"
+              value={formData.currentWaterHeight}
+              onChange={(e) => setFormData({ ...formData, currentWaterHeight: e.target.value })}
+              required
+              className="w-full px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+            />
+            <input
+              type="number"
+              step="0.1"
+              placeholder="Inflow Rate (m³/hr)"
+              value={formData.inflowRate}
+              onChange={(e) => setFormData({ ...formData, inflowRate: e.target.value })}
+              required
+              className="w-full px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+            />
+            <div className="mt-2 p-2 bg-surfaceAlt rounded text-xs text-textSecondary">
+              <p>📊 After saving, time-to-flood will recalculate based on new values.</p>
+              <p>⏱️ The countdown timer will restart from the new calculated time.</p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button type="submit" disabled={isSubmitting} className="flex-1 btn-primary text-sm">
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingSump(null)}
+                className="flex-1 btn-secondary text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   // ============ PUMP FORM MODAL ============
   const PumpFormModal = () => {
     const [formData, setFormData] = useState({
@@ -430,6 +589,205 @@ function Dashboard() {
     );
   };
 
+  // ============ EDIT PUMP MODAL ============
+  const EditPumpModal = () => {
+    const [formData, setFormData] = useState({
+      pumpId: '',
+      sumpId: '',
+      ratedDischarge: '',
+      currentDischarge: '',
+      motorPowerKw: '',
+      motorTorqueNm: '',
+      status: 'STOPPED',
+      torqueTrend: 'STABLE',
+      dischargeTrend: 'STABLE'
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Pre-fill form when editingPump changes
+    useEffect(() => {
+      if (editingPump) {
+        setFormData({
+          pumpId: editingPump.pumpId || '',
+          sumpId: editingPump.sumpId?._id || editingPump.sumpId || '',
+          ratedDischarge: editingPump.ratedDischarge || editingPump.originalCapacity || '',
+          currentDischarge: editingPump.currentDischarge || editingPump.currentCapacity || '',
+          motorPowerKw: editingPump.motor?.powerKw || '',
+          motorTorqueNm: editingPump.motor?.torqueNm || '',
+          status: editingPump.status || 'STOPPED',
+          torqueTrend: editingPump.healthIndicators?.torqueTrend || 'STABLE',
+          dischargeTrend: editingPump.healthIndicators?.dischargeTrend || 'STABLE'
+        });
+      }
+    }, [editingPump]);
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+        await apiClient.put(`/api/pumps/${editingPump._id}`, {
+          pumpId: formData.pumpId,
+          sumpId: formData.sumpId,
+          ratedDischarge: parseFloat(formData.ratedDischarge),
+          currentDischarge: parseFloat(formData.currentDischarge),
+          motor: {
+            powerKw: parseFloat(formData.motorPowerKw) || 0,
+            torqueNm: parseFloat(formData.motorTorqueNm) || 0
+          },
+          status: formData.status,
+          healthIndicators: {
+            torqueTrend: formData.torqueTrend,
+            dischargeTrend: formData.dischargeTrend
+          }
+        });
+        setEditingPump(null);
+        fetchAllData(); // Refresh data & recalculate all sump flood times
+      } catch (err) {
+        alert('Failed to update pump: ' + (err.response?.data?.error || err.message));
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    if (!editingPump) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-surface border border-border rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-text">Edit Pump</h3>
+            <button onClick={() => setEditingPump(null)} className="text-textSecondary hover:text-text">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="text"
+              placeholder="Pump ID (e.g., PUMP-001)"
+              value={formData.pumpId}
+              onChange={(e) => setFormData({ ...formData, pumpId: e.target.value })}
+              required
+              className="w-full px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+            />
+            
+            <select
+              value={formData.sumpId}
+              onChange={(e) => setFormData({ ...formData, sumpId: e.target.value })}
+              required
+              className="w-full px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+            >
+              <option value="">Select Connected Sump</option>
+              {sumps.map(sump => (
+                <option key={sump._id} value={sump._id}>{sump.name}</option>
+              ))}
+            </select>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Rated Discharge (m³/hr)"
+                value={formData.ratedDischarge}
+                onChange={(e) => setFormData({ ...formData, ratedDischarge: e.target.value })}
+                required
+                className="px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+              />
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Current Discharge (m³/hr)"
+                value={formData.currentDischarge}
+                onChange={(e) => setFormData({ ...formData, currentDischarge: e.target.value })}
+                required
+                className="px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Motor Power (kW)"
+                value={formData.motorPowerKw}
+                onChange={(e) => setFormData({ ...formData, motorPowerKw: e.target.value })}
+                className="px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+              />
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Motor Torque (Nm)"
+                value={formData.motorTorqueNm}
+                onChange={(e) => setFormData({ ...formData, motorTorqueNm: e.target.value })}
+                className="px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+              />
+            </div>
+            
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              className="w-full px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+            >
+              <option value="STOPPED">Stopped</option>
+              <option value="RUNNING">Running</option>
+              <option value="FAULT">Fault</option>
+            </select>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-textSecondary block mb-1">Torque Trend</label>
+                <select
+                  value={formData.torqueTrend}
+                  onChange={(e) => setFormData({ ...formData, torqueTrend: e.target.value })}
+                  className="w-full px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+                >
+                  <option value="STABLE">Stable</option>
+                  <option value="RISING">Rising (⚠️)</option>
+                  <option value="FALLING">Falling</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-textSecondary block mb-1">Discharge Trend</label>
+                <select
+                  value={formData.dischargeTrend}
+                  onChange={(e) => setFormData({ ...formData, dischargeTrend: e.target.value })}
+                  className="w-full px-3 py-2 bg-surfaceAlt border border-border rounded text-text text-sm"
+                >
+                  <option value="STABLE">Stable</option>
+                  <option value="RISING">Rising</option>
+                  <option value="FALLING">Falling (⚠️)</option>
+                </select>
+              </div>
+            </div>
+            
+            {formData.torqueTrend === 'RISING' && formData.dischargeTrend === 'FALLING' && (
+              <div className="p-2 bg-danger/10 border border-danger/50 rounded text-sm text-danger">
+                ⚠️ Siltation pattern detected! Rising torque + falling discharge indicates pump blockage.
+              </div>
+            )}
+            
+            <div className="mt-2 p-2 bg-surfaceAlt rounded text-xs text-textSecondary">
+              <p>📊 Changing pump status/discharge affects connected sump's time-to-flood.</p>
+              <p>⏱️ Countdown timer resets after saving.</p>
+            </div>
+            
+            <div className="flex gap-2 pt-2">
+              <button type="submit" disabled={isSubmitting} className="flex-1 btn-primary text-sm">
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingPump(null)}
+                className="flex-1 btn-secondary text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   // ============ ROAD FORM MODAL ============
   const RoadFormModal = () => {
     const [formData, setFormData] = useState({
@@ -560,15 +918,34 @@ function Dashboard() {
   };
 
   // ============ FORMAT TIME HELPER ============
-  const formatTimeToFlood = (floodAnalysis) => {
+  const formatTimeToFlood = (floodAnalysis, includeCountdown = true) => {
     if (!floodAnalysis) return 'N/A';
     if (floodAnalysis.timeToFlood === Infinity || floodAnalysis.netInflow <= 0) {
       return '∞ (Stable)';
     }
-    const hours = floodAnalysis.timeToFloodHours || floodAnalysis.timeToFlood;
+    let hours = floodAnalysis.timeToFloodHours || floodAnalysis.timeToFlood;
+    
+    // Subtract elapsed time since data was fetched (real-time countdown)
+    if (includeCountdown) {
+      const elapsed = getElapsedHours();
+      hours = Math.max(0, hours - elapsed);
+    }
+    
+    if (hours <= 0) return '⚠️ FLOODING NOW';
     if (hours > 48) return `${Math.round(hours)} hours`;
     if (hours > 1) return `${hours.toFixed(1)} hours`;
     return `${Math.round(hours * 60)} minutes`;
+  };
+  
+  // Get adjusted time to flood accounting for elapsed time
+  const getAdjustedTimeToFlood = (sump) => {
+    if (!sump.floodAnalysis) return null;
+    if (sump.floodAnalysis.timeToFlood === Infinity || sump.floodAnalysis.netInflow <= 0) {
+      return Infinity;
+    }
+    const hours = sump.floodAnalysis.timeToFloodHours || sump.floodAnalysis.timeToFlood;
+    const elapsed = getElapsedHours();
+    return Math.max(0, hours - elapsed);
   };
 
   // ============ RENDER OVERVIEW TAB ============
@@ -679,7 +1056,16 @@ function Dashboard() {
                         Total Vol: {sump.maxVolume?.toFixed(1)} m³ | Current: {sump.currentVolume?.toFixed(1)} m³
                       </p>
                     </div>
-                    <StatusBadge status={sump.floodAnalysis?.status || sump.status} />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setEditingSump(sump)}
+                        className="p-1.5 hover:bg-surfaceAlt rounded text-textSecondary hover:text-accent transition-colors"
+                        title="Edit Sump"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <StatusBadge status={sump.floodAnalysis?.status || sump.status} />
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -810,15 +1196,24 @@ function Dashboard() {
                           Discharge: {current} / {rated} m³/hr ({capacityPercent}%)
                         </p>
                       </div>
-                      <span className={
-                        pump.health === 'green'
-                          ? 'badge-safe'
-                          : pump.health === 'yellow'
-                            ? 'badge-warning'
-                            : 'badge-critical'
-                      }>
-                        {pump.health === 'green' ? '🟢 Healthy' : pump.health === 'yellow' ? '🟡 Warning' : '🔴 Critical'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setEditingPump(pump)}
+                          className="p-1.5 hover:bg-surfaceAlt rounded text-textSecondary hover:text-accent transition-colors"
+                          title="Edit Pump"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <span className={
+                          pump.health === 'green'
+                            ? 'badge-safe'
+                            : pump.health === 'yellow'
+                              ? 'badge-warning'
+                              : 'badge-critical'
+                        }>
+                          {pump.health === 'green' ? '🟢 Healthy' : pump.health === 'yellow' ? '🟡 Warning' : '🔴 Critical'}
+                        </span>
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4 text-sm mb-3">
@@ -1084,6 +1479,8 @@ function Dashboard() {
       <SumpFormModal />
       <PumpFormModal />
       <RoadFormModal />
+      <EditSumpModal />
+      <EditPumpModal />
     </div>
   );
 }

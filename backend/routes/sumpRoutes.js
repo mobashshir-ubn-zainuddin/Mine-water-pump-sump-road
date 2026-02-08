@@ -129,14 +129,14 @@ router.get(
 );
 
 // ============ UPDATE SUMP ============
-// Update water level and inflow rate
+// Update sump details including dimensions and water levels
 router.put(
   '/:sumpId',
   verifyToken,
   validateSumpUpdate,
   handleValidationErrors,
   asyncHandler(async (req, res) => {
-    const { currentWaterHeight, inflowRate, notes } = req.body;
+    const { name, length, width, depth, currentWaterHeight, inflowRate, notes } = req.body;
 
     const sump = await Sump.findOne({
       _id: req.params.sumpId,
@@ -147,6 +147,17 @@ router.put(
       return res.status(404).json({ error: 'Sump not found' });
     }
 
+    // Update dimensions if provided
+    if (name !== undefined) sump.name = name;
+    if (length !== undefined) sump.length = length;
+    if (width !== undefined) sump.width = width;
+    if (depth !== undefined) sump.depth = depth;
+
+    // Recalculate max volume if dimensions changed
+    if (length !== undefined || width !== undefined || depth !== undefined) {
+      sump.maxVolume = sump.length * sump.width * sump.depth;
+    }
+
     // Validate water height
     if (currentWaterHeight !== undefined && currentWaterHeight > sump.depth) {
       return res.status(400).json({
@@ -154,8 +165,11 @@ router.put(
       });
     }
 
-    // Update fields
-    if (currentWaterHeight !== undefined) sump.currentWaterHeight = currentWaterHeight;
+    // Update water level fields
+    if (currentWaterHeight !== undefined) {
+      sump.currentWaterHeight = currentWaterHeight;
+      sump.currentVolume = sump.length * sump.width * currentWaterHeight;
+    }
     if (inflowRate !== undefined) sump.inflowRate = inflowRate;
     if (notes !== undefined) sump.notes = notes;
 

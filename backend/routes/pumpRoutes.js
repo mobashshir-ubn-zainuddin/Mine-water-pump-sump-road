@@ -141,6 +141,9 @@ router.put(
   verifyToken,
   asyncHandler(async (req, res) => {
     const { 
+      pumpId: newPumpId,
+      sumpId,
+      ratedDischarge,
       currentDischarge,
       currentCapacity, 
       status,
@@ -159,6 +162,18 @@ router.put(
 
     if (!pump) {
       return res.status(404).json({ error: 'Pump not found' });
+    }
+
+    // Update pump ID if provided
+    if (newPumpId !== undefined) pump.pumpId = newPumpId;
+    
+    // Update sump assignment if provided
+    if (sumpId !== undefined) pump.sumpId = sumpId;
+    
+    // Update rated discharge if provided
+    if (ratedDischarge !== undefined) {
+      pump.ratedDischarge = ratedDischarge;
+      pump.originalCapacity = ratedDischarge;
     }
 
     const rated = pump.ratedDischarge || pump.originalCapacity;
