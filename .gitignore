@@ -10,6 +10,9 @@ node_modules/
 .next/
 # Environment variables
 .env
+.env.local
+.env.development
+.env.production
+.env.test
 .env.*
-.env*.local
 .DS_Store
