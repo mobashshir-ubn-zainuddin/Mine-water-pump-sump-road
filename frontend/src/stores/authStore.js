@@ -26,9 +26,10 @@ apiClient.interceptors.request.use((config) => {
 
 export const useAuthStore = create((set) => ({
   // State
-  user: null,
+  user: JSON.parse(localStorage.getItem('user')) || null,
   tokens: null,
   isLoading: false,
+  isInitialized: false,
   error: null,
   locationPermission: false,
 
@@ -45,9 +46,10 @@ export const useAuthStore = create((set) => ({
 
       const { user, tokens } = response.data;
 
-      // Store tokens in localStorage
+      // Store tokens and user in localStorage
       localStorage.setItem('accessToken', tokens.accessToken);
       localStorage.setItem('refreshToken', tokens.refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
 
       set({ user, tokens, isLoading: false });
       return user;
@@ -69,9 +71,10 @@ export const useAuthStore = create((set) => ({
 
       const { user, tokens } = response.data;
 
-      // Store tokens
+      // Store tokens and user
       localStorage.setItem('accessToken', tokens.accessToken);
       localStorage.setItem('refreshToken', tokens.refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
 
       set({ user, tokens, isLoading: false });
       return user;
@@ -91,9 +94,10 @@ export const useAuthStore = create((set) => ({
       console.error('Logout error:', error);
     }
 
-    // Clear tokens
+    // Clear tokens and user
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
 
     set({
       user: null,
@@ -108,6 +112,7 @@ export const useAuthStore = create((set) => ({
     try {
       const response = await apiClient.get('/api/auth/me');
       const { user } = response.data;
+      localStorage.setItem('user', JSON.stringify(user));
       set({ user, isLoading: false });
       return user;
     } catch (error) {
@@ -164,14 +169,25 @@ export const useAuthStore = create((set) => ({
   // ============ INIT AUTH ============
   initAuth: async () => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
+    const storedUser = localStorage.getItem('user');
+    
+    if (token && storedUser) {
+      // Set user from localStorage immediately
+      set({ user: JSON.parse(storedUser) });
+      
       try {
+        // Verify token is still valid by fetching current user
         await useAuthStore.getState().getCurrentUser();
       } catch (error) {
+        // Token invalid, clear everything
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        set({ user: null, tokens: null });
       }
     }
+    
+    set({ isInitialized: true });
   }
 }));
 

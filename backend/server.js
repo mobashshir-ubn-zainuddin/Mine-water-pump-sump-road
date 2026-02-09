@@ -43,12 +43,19 @@ app.use(cors({
 
 // Rate limiting to prevent brute force attacks
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 200, // 200 requests per minute (much higher for dashboard)
   message: 'Too many requests from this IP, please try again later.'
 });
 
-// Apply rate limiting to all routes
+// Stricter rate limit for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 login attempts per 15 minutes
+  message: 'Too many login attempts, please try again later.'
+});
+
+// Apply general rate limiting to all routes
 app.use(limiter);
 
 // ============ BODY PARSING ============
@@ -65,7 +72,7 @@ mongoose
   });
 
 // ============ ROUTES ============
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/sumps', sumpRoutes);
 app.use('/api/pumps', pumpRoutes);
 app.use('/api/roads', roadRoutes);

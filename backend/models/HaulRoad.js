@@ -99,9 +99,35 @@ const haulRoadSchema = new mongoose.Schema(
       default: false
     },
     softSpotLocations: [{
+      // Local position (relative to mine origin)
+      x: Number,
+      y: Number,
+      // Legacy lat/lng support (optional)
       lat: Number,
       lng: Number,
-      severity: String, // mild, moderate, severe
+      severity: {
+        type: String,
+        enum: ['mild', 'moderate', 'severe', 'SOFT', 'CRITICAL', 'NONE'],
+        default: 'SOFT'
+      },
+      detectionCount: {
+        type: Number,
+        default: 1
+      },
+      uniqueTrucks: {
+        type: Number,
+        default: 1
+      },
+      detectedByTrucks: [{
+        type: String
+      }],
+      confidence: {
+        type: String,
+        enum: ['low', 'medium', 'high', 'LOW', 'HIGH'],
+        default: 'LOW'
+      },
+      avgSpeedDrop: Number,
+      firstDetected: Date,
       lastDetected: Date
     }],
 
@@ -177,38 +203,76 @@ haulRoadSchema.methods.assessDrainage = function () {
 };
 
 // Detect soft spots from truck telemetry
+// Uses LOCAL positioning system (coordinates relative to mine origin)
 haulRoadSchema.methods.detectSoftSpots = function (truckData) {
   // Soft spot detection criteria:
-  // - Payload is approximately constant (loaded truck)
-  // - Speed drops consistently over same road segment
-  // - Strut pressure increases abnormally
+  // - Speed drops consistently (>20%) while loaded
+  // - OR Strut pressure increases abnormally
+  // - OR Speed drops severely (>50%) regardless
 
-  const speedPercent = (truckData.currentSpeed / truckData.normalSpeed) * 100;
+  const speedDropPercent = truckData.normalSpeed > 0 
+    ? ((truckData.normalSpeed - truckData.currentSpeed) / truckData.normalSpeed) * 100 
+    : 0;
+
+  const significantSpeedDrop = speedDropPercent >= 20;
+  const severeSpeedDrop = speedDropPercent >= 50;
+  const loadedTruck = truckData.payloadConstant && (truckData.payloadWeight > 0 || truckData.payloadConstant);
 
   // Check if this qualifies as soft spot detection
-  if (
-    speedPercent <= 50 &&
-    truckData.payloadConstant &&
-    truckData.strutPressureAnomaly
-  ) {
-    const severity = this.calculateSeverity(speedPercent);
+  if (severeSpeedDrop || (significantSpeedDrop && loadedTruck) || 
+      (significantSpeedDrop && truckData.strutPressureAnomaly)) {
     
-    // Add to soft spot locations
+    const severity = this.calculateSeverity(speedDropPercent, truckData.strutPressureAnomaly);
+    
+    // Get position (prefer local coordinates, fall back to GPS)
+    const position = truckData.localPosition || truckData.gpsLocation || { x: 0, y: 0 };
+    const x = position.x !== undefined ? position.x : position.lat;
+    const y = position.y !== undefined ? position.y : position.lng;
+    
+    // Find existing spot within 10 units (meters) radius
+    const gridTolerance = 10;
     const existingSpot = this.softSpotLocations.find(
-      spot => Math.abs(spot.lat - truckData.gpsLocation.lat) < 0.0001 && 
-              Math.abs(spot.lng - truckData.gpsLocation.lng) < 0.0001
+      spot => {
+        const spotX = spot.x !== undefined ? spot.x : spot.lat;
+        const spotY = spot.y !== undefined ? spot.y : spot.lng;
+        return Math.abs(spotX - x) < gridTolerance && Math.abs(spotY - y) < gridTolerance;
+      }
     );
 
     if (!existingSpot) {
+      // New soft spot detected
       this.softSpotLocations.push({
-        lat: truckData.gpsLocation.lat,
-        lng: truckData.gpsLocation.lng,
+        x: x,
+        y: y,
+        lat: x, // Legacy compatibility
+        lng: y, // Legacy compatibility
         severity,
+        detectionCount: 1,
+        uniqueTrucks: 1,
+        confidence: 'low',
+        avgSpeedDrop: speedDropPercent,
         lastDetected: new Date()
       });
     } else {
-      existingSpot.severity = severity;
+      // Update existing spot with new detection
+      existingSpot.detectionCount = (existingSpot.detectionCount || 1) + 1;
+      existingSpot.avgSpeedDrop = existingSpot.avgSpeedDrop 
+        ? (existingSpot.avgSpeedDrop + speedDropPercent) / 2 
+        : speedDropPercent;
       existingSpot.lastDetected = new Date();
+      
+      // Upgrade severity if this detection is worse
+      if (severity === 'severe' || 
+          (severity === 'moderate' && existingSpot.severity === 'mild')) {
+        existingSpot.severity = severity;
+      }
+      
+      // Update confidence based on detection count
+      if (existingSpot.detectionCount >= 5) {
+        existingSpot.confidence = 'high';
+      } else if (existingSpot.detectionCount >= 2) {
+        existingSpot.confidence = 'medium';
+      }
     }
 
     this.softSpotDetected = true;
@@ -217,18 +281,19 @@ haulRoadSchema.methods.detectSoftSpots = function (truckData) {
     return {
       softSpotDetected: true,
       severity,
-      location: {
-        lat: truckData.gpsLocation.lat,
-        lng: truckData.gpsLocation.lng
-      },
-      message: 'Soft spot detected - road surface compromise suspected',
-      recommendation: 'Inspect drainage and schedule maintenance'
+      speedDropPercent: Math.round(speedDropPercent),
+      location: { x, y },
+      message: `Soft spot detected - ${severity} road surface compromise`,
+      recommendation: severity === 'severe' 
+        ? 'URGENT: Immediate inspection required. Restrict heavy traffic.'
+        : 'Inspect drainage and schedule maintenance'
     };
   }
 
   return {
     softSpotDetected: false,
-    message: 'No soft spot detected'
+    speedDropPercent: Math.round(speedDropPercent),
+    message: 'No soft spot detected - road condition normal'
   };
 };
 
@@ -249,10 +314,10 @@ haulRoadSchema.methods.updateConditionStatus = function () {
   return this.condition.status;
 };
 
-// Calculate soft spot severity
-haulRoadSchema.methods.calculateSeverity = function (speedPercent) {
-  if (speedPercent <= 30) return 'severe';
-  if (speedPercent <= 40) return 'moderate';
+// Calculate soft spot severity based on speed drop and strut anomaly
+haulRoadSchema.methods.calculateSeverity = function (speedDropPercent, strutAnomaly = false) {
+  if (speedDropPercent >= 50 || (strutAnomaly && speedDropPercent >= 40)) return 'severe';
+  if (speedDropPercent >= 35 || strutAnomaly) return 'moderate';
   return 'mild';
 };
 
