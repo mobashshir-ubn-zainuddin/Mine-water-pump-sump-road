@@ -78,7 +78,15 @@ app.use('/api/pumps', pumpRoutes);
 app.use('/api/roads', roadRoutes);
 app.use('/api/weather', weatherRoutes);
 
-// Health check endpoint
+// Health check endpoints
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'Mine Water Road Pump Management API',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
