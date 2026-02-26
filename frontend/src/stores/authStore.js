@@ -1,24 +1,21 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-// ================= API CONFIG =================
+// ============ AUTH STORE ============
+// Centralized state management for authentication using Zustand
+// Stores user info, tokens, and location permission status
 
-// Fallback protection (important in production)
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
-// Create axios instance
+// Configure axios instance with base URL
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
-  },
-  withCredentials: true
+  }
 });
 
-// ================= REQUEST INTERCEPTOR =================
-
+// Add token to requests automatically
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
@@ -27,63 +24,18 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// ================= RESPONSE INTERCEPTOR =================
-// Auto refresh token if expired
-
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    // If token expired and not already retried
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry
-    ) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const res = await axios.post(
-          `${API_URL}/api/auth/refresh`,
-          { refreshToken }
-        );
-
-        const newAccessToken = res.data.accessToken;
-        localStorage.setItem('accessToken', newAccessToken);
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        return axios(originalRequest);
-      } catch (err) {
-        // Refresh failed → logout
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return Promise.reject(err);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
-
-// ================= AUTH STORE =================
-
 export const useAuthStore = create((set) => ({
+  // State
   user: JSON.parse(localStorage.getItem('user')) || null,
+  tokens: null,
   isLoading: false,
   isInitialized: false,
   error: null,
   locationPermission: false,
 
-  // ================= SIGNUP =================
+  // ============ SIGNUP ============
   signup: async (name, email, password, role = 'foreman') => {
     set({ isLoading: true, error: null });
-
     try {
       const response = await apiClient.post('/api/auth/signup', {
         name,
@@ -94,28 +46,23 @@ export const useAuthStore = create((set) => ({
 
       const { user, tokens } = response.data;
 
+      // Store tokens and user in localStorage
       localStorage.setItem('accessToken', tokens.accessToken);
       localStorage.setItem('refreshToken', tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
 
-      set({ user, isLoading: false });
-
+      set({ user, tokens, isLoading: false });
       return user;
     } catch (error) {
-      const message =
-        error.response?.data?.error ||
-        error.message ||
-        'Signup failed';
-
-      set({ error: message, isLoading: false });
+      const errorMsg = error.response?.data?.error || 'Signup failed';
+      set({ error: errorMsg, isLoading: false });
       throw error;
     }
   },
 
-  // ================= LOGIN =================
+  // ============ LOGIN ============
   login: async (email, password) => {
     set({ isLoading: true, error: null });
-
     try {
       const response = await apiClient.post('/api/auth/login', {
         email,
@@ -124,92 +71,122 @@ export const useAuthStore = create((set) => ({
 
       const { user, tokens } = response.data;
 
+      // Store tokens and user
       localStorage.setItem('accessToken', tokens.accessToken);
       localStorage.setItem('refreshToken', tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
 
-      set({ user, isLoading: false });
-
+      set({ user, tokens, isLoading: false });
       return user;
     } catch (error) {
-      const message =
-        error.response?.data?.error ||
-        error.message ||
-        'Login failed';
-
-      set({ error: message, isLoading: false });
+      const errorMsg = error.response?.data?.error || 'Login failed';
+      set({ error: errorMsg, isLoading: false });
       throw error;
     }
   },
 
-  // ================= LOGOUT =================
+  // ============ LOGOUT ============
   logout: async () => {
+    const refreshToken = localStorage.getItem('refreshToken');
     try {
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        await apiClient.post('/api/auth/logout', { refreshToken });
-      }
-    } catch (err) {
-      console.error('Logout error:', err);
+      await apiClient.post('/api/auth/logout', { refreshToken });
+    } catch (error) {
+      console.error('Logout error:', error);
     }
 
+    // Clear tokens and user
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
 
-    set({ user: null, locationPermission: false });
-
-    window.location.href = '/login';
+    set({
+      user: null,
+      tokens: null,
+      locationPermission: false
+    });
   },
 
-  // ================= CURRENT USER =================
+  // ============ GET CURRENT USER ============
   getCurrentUser: async () => {
+    set({ isLoading: true, error: null });
     try {
       const response = await apiClient.get('/api/auth/me');
       const { user } = response.data;
-
       localStorage.setItem('user', JSON.stringify(user));
-      set({ user });
-
+      set({ user, isLoading: false });
       return user;
     } catch (error) {
-      console.error('Fetch user failed:', error);
+      console.error('Failed to fetch current user:', error);
+      set({ isLoading: false });
       throw error;
     }
   },
 
-  // ================= LOCATION PERMISSION =================
+  // ============ UPDATE LOCATION PERMISSION ============
   setLocationPermission: async (granted) => {
     try {
-      await apiClient.patch('/api/auth/location-permission', {
+      const response = await apiClient.patch('/api/auth/location-permission', {
         locationPermission: granted
       });
-
       set({ locationPermission: granted });
+      return response.data;
     } catch (error) {
-      console.error('Location update failed:', error);
+      console.error('Failed to update location permission:', error);
       throw error;
     }
   },
 
-  // ================= INIT AUTH =================
+  // ============ REFRESH TOKEN ============
+  refreshAccessToken: async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) throw new Error('No refresh token');
+
+      const response = await apiClient.post('/api/auth/refresh', {
+        refreshToken
+      });
+
+      const { accessToken } = response.data;
+      localStorage.setItem('accessToken', accessToken);
+
+      return accessToken;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // Clear tokens and logout
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      set({ user: null, tokens: null });
+      throw error;
+    }
+  },
+
+  // ============ CHECK IF AUTHENTICATED ============
+  checkAuth: () => {
+    const token = localStorage.getItem('accessToken');
+    return !!token;
+  },
+
+  // ============ INIT AUTH ============
   initAuth: async () => {
     const token = localStorage.getItem('accessToken');
     const storedUser = localStorage.getItem('user');
-
+    
     if (token && storedUser) {
+      // Set user from localStorage immediately
       set({ user: JSON.parse(storedUser) });
-
+      
       try {
+        // Verify token is still valid by fetching current user
         await useAuthStore.getState().getCurrentUser();
-      } catch {
+      } catch (error) {
+        // Token invalid, clear everything
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-        set({ user: null });
+        set({ user: null, tokens: null });
       }
     }
-
+    
     set({ isInitialized: true });
   }
 }));
