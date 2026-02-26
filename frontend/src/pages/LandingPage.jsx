@@ -289,7 +289,7 @@ function LandingPage() {
               System
             </h2>
             <p className="text-lg text-textSecondary mb-8 leading-relaxed">
-              Real-time sump monitoring, pump health tracking, and AI-powered flood
+              Real-time sump monitoring, pump health tracking, and flood
               prediction. Keep your mining operations safe and efficient.
             </p>
           </div>
