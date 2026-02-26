@@ -5,7 +5,7 @@ import axios from 'axios';
 // Centralized state management for authentication using Zustand
 // Stores user info, tokens, and location permission status
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Configure axios instance with base URL
 const apiClient = axios.create({
