@@ -1,6 +1,9 @@
 # Mine Water, Road & Pump Management System
 
-A production-grade MERN stack application for real-time mining water management, pump health monitoring, and haul road maintenance. Features AI-powered flood prediction, weather integration, and cybersecurity compliance.
+A production-grade MERN stack application for real-time mining water management, pump health monitoring, and haul road maintenance. Features flood prediction, weather integration, and cybersecurity compliance.
+
+## Website Link
+https://mine-water-pump-sump-road.vercel.app/
 
 ## 🎯 Project Overview
 
