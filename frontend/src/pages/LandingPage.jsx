@@ -285,7 +285,7 @@ function LandingPage() {
           <div>
             <h2 className="text-5xl md:text-6xl font-bold text-text mb-6 leading-tight">
               Mining Water
-              <span className="text-accent"> Management</span>
+              <span className="text-accent"> Management </span>
               System
             </h2>
             <p className="text-lg text-textSecondary mb-8 leading-relaxed">
