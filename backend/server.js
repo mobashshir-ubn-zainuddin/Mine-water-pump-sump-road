@@ -22,23 +22,30 @@ app.use(helmet());
 
 // CORS Configuration
 // In production, replace CLIENT_URL with your actual frontend domain
+// CORS Configuration
 const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:3000'
+  process.env.CLIENT_URL,
+  'http://localhost:3000'
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed'));
+    // Allow non-browser tools (Postman, curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
+
+    return callback(null, false); // DO NOT throw error
   },
-  credentials: true, // Allow cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// 👇 THIS is important for preflight
+app.options('*', cors());
 
 // Rate limiting to prevent brute force attacks
 const limiter = rateLimit({
