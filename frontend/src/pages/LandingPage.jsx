@@ -284,9 +284,9 @@ function LandingPage() {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
             <h2 className="text-5xl md:text-6xl font-bold text-text mb-6 leading-tight">
-              Mining Water
-              <span className="text-accent"> Management </span>
-              System
+              MineOps
+              <span className="text-accent"> Monitoring </span>
+              Suite
             </h2>
             <p className="text-lg text-textSecondary mb-8 leading-relaxed">
               Real-time sump monitoring, pump health tracking, hual road soft spot detection, and flood
