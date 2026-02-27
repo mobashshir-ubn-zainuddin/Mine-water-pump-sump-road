@@ -25,11 +25,11 @@ function Header() {
         {/* Logo */}
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
-            <span className="text-background font-bold text-lg">MW</span>
+            <span className="text-background font-bold text-lg">MMS</span>
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-lg font-bold text-text">Mine Water</h1>
-            <p className="text-xs text-textSecondary">Management System</p>
+            <h1 className="text-lg font-bold text-text">MineOps</h1>
+            <p className="text-xs text-textSecondary">Monitoring System</p>
           </div>
         </div>
 
